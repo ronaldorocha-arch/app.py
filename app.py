@@ -5,72 +5,85 @@ from gtts import gTTS
 import io
 from streamlit_mic_recorder import mic_recorder
 
-st.set_page_config(page_title="English Mastery IA", layout="wide")
+# --- CONFIGURAÇÃO ---
+st.set_page_config(page_title="Curso de Inglês IA", layout="wide")
 
-# Lista de Perguntas de Entrevista
+# --- BANCO DE DADOS DE PERGUNTAS ---
 PERGUNTAS = [
-    "Tell me about your professional background.",
-    "What are your greatest professional strengths?",
-    "Why do you want to work for this company?",
+    "Tell me about yourself.",
+    "Why should we hire you?",
+    "What are your salary expectations?",
+    "How do you handle stress and pressure?",
+    "What is your greatest professional achievement?",
+    "Why are you leaving your current job?",
     "Where do you see yourself in five years?",
-    "How do you handle pressure at work?"
+    "Do you prefer working alone or in a team?"
 ]
 
+# --- CARREGAR VOCABULÁRIO ---
 @st.cache_data
 def load_words():
     try:
         return pd.read_csv('palavras.csv')
     except:
-        return pd.DataFrame({"word": ["Ready?"], "translation": ["Pronto?"], "sentence": ["Are you ready to study?"]})
+        return pd.DataFrame({"word": ["Ready"], "translation": ["Pronto"], "sentence": ["Are you ready?"]})
 
 df_words = load_words()
 
-# Inicializar Memória
-if 'pontos' not in st.session_state: st.session_state.pontos = 0
+# --- MEMÓRIA DO APP ---
+if 'pontos_ronaldo' not in st.session_state: st.session_state.pontos_ronaldo = 0
+if 'pontos_amigo' not in st.session_state: st.session_state.pontos_amigo = 0
 if 'word_idx' not in st.session_state: st.session_state.word_idx = 0
-if 'pergunta_idx' not in st.session_state: st.session_state.pergunta_idx = 0
+if 'perg_idx' not in st.session_state: st.session_state.perg_idx = 0
 
-def play_audio(text):
+# --- LOGIN ---
+user = st.sidebar.selectbox("👤 Usuário", ["Ronaldo", "Amigo"])
+pontos_atuais = st.session_state.pontos_ronaldo if user == "Ronaldo" else st.session_state.pontos_amigo
+st.sidebar.metric("🏆 Seus Pontos", pontos_atuais)
+
+def play(text):
     tts = gTTS(text=text, lang='en')
     fp = io.BytesIO()
     tts.write_to_fp(fp)
-    st.audio(fp, format='audio/mp3')
+    st.audio(fp)
 
-st.sidebar.title("🚀 Status")
-st.sidebar.metric("Seus Pontos", st.session_state.pontos)
+# --- INTERFACE ---
+st.title("🇬🇧 English Mastery Course")
 
-tab1, tab2, tab3 = st.tabs(["🗂️ Vocabulário", "🎙️ Entrevista IA", "🏆 Ranking"])
+tab1, tab2, tab3 = st.tabs(["🎯 Vocabulário", "🎤 Entrevista", "📊 Ranking"])
 
 with tab1:
-    atual = df_words.iloc[st.session_state.word_idx]
-    st.header(f"Palavra: {atual['word']}")
-    if st.button("Ver Resposta"):
-        st.success(f"Tradução: {atual['translation']}")
-        st.write(f"Exemplo: {atual['sentence']}")
-        play_audio(atual['sentence'])
+    word = df_words.iloc[st.session_state.word_idx]
+    st.header(f"Word: {word['word']}")
+    if st.button("👁️ Mostrar Tradução"):
+        st.success(f"Tradução: {word['translation']}")
+        st.info(f"Exemplo: {word['sentence']}")
+        play(word['sentence'])
     
     if st.button("Próxima Palavra ➡️"):
         st.session_state.word_idx = random.randint(0, len(df_words)-1)
-        st.session_state.pontos += 5
+        if user == "Ronaldo": st.session_state.pontos_ronaldo += 5
+        else: st.session_state.pontos_amigo += 5
         st.rerun()
 
 with tab2:
-    pergunta_atual = PERGUNTAS[st.session_state.pergunta_idx]
-    st.subheader("Simulador de Voz")
-    st.info(f"IA Pergunta: {pergunta_atual}")
+    perg = PERGUNTAS[st.session_state.perg_idx]
+    st.subheader("Treino de Entrevista")
+    st.warning(f"IA Pergunta: {perg}")
+    if st.button("🔊 Ouvir Pergunta"): play(perg)
     
-    if st.button("🔊 Ouvir Pergunta"):
-        play_audio(pergunta_atual)
-    
-    audio = mic_recorder(start_prompt="🎤 Falar Resposta", stop_prompt="🛑 Parar", key='entrevista')
-    
+    audio = mic_recorder(start_prompt="🎤 Gravar Resposta", stop_prompt="🛑 Parar", key='entrevista')
     if audio:
         st.audio(audio['bytes'])
-        st.success("Resposta enviada! Muito bem.")
-        if st.button("Próxima Pergunta da Entrevista"):
-            st.session_state.pergunta_idx = (st.session_state.pergunta_idx + 1) % len(PERGUNTAS)
-            st.session_state.pontos += 10
-            st.rerun()
+        st.success("Áudio gravado! Pratique a pronúncia ouvindo sua gravação.")
+
+    if st.button("Trocar Pergunta 🔄"):
+        st.session_state.perg_idx = (st.session_state.perg_idx + 1) % len(PERGUNTAS)
+        if user == "Ronaldo": st.session_state.pontos_ronaldo += 10
+        else: st.session_state.pontos_amigo += 10
+        st.rerun()
 
 with tab3:
-    st.write("Em breve: Ranking persistente com seu amigo!")
+    st.header("Placar do Desafio")
+    data = {"Jogador": ["Ronaldo", "Amigo"], "Pontos": [st.session_state.pontos_ronaldo, st.session_state.pontos_amigo]}
+    st.table(pd.DataFrame(data))
