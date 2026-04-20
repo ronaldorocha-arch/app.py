@@ -1,65 +1,76 @@
 import streamlit as st
 import pandas as pd
 import random
+from gtts import gTTS
+import io
 
-st.set_page_config(page_title="My English IA", page_icon="🇬🇧")
+# Configurações iniciais
+st.set_page_config(page_title="English Duolingo IA", layout="wide")
 
-# Carregar as palavras do arquivo que você criou
-@st.cache_data
-def load_data():
-    try:
-        return pd.read_csv('palavras.csv')
-    except:
-        return pd.DataFrame({"word": ["Study"], "translation": ["Estudar"], "sentence": ["I love to study."]})
+# Simulação de Banco de Dados (Em um app real usaríamos um DB de verdade)
+if 'usuarios' not in st.session_state:
+    st.session_state.usuarios = {
+        "Ronaldo": {"pontos": 120, "streak": 5, "last_day": "2023-10-26"},
+        "Amigo": {"pontos": 95, "streak": 3, "last_day": "2023-10-25"}
+    }
 
-df = load_data()
+# --- FUNÇÕES DE ÁUDIO ---
+def falar(texto):
+    tts = gTTS(text=texto, lang='en')
+    fp = io.BytesIO()
+    tts.write_to_fp(fp)
+    return fp
 
-st.title("🎓 English Mastery App")
+# --- LOGIN ---
+st.sidebar.title("👤 Login")
+user = st.sidebar.selectbox("Quem está estudando?", ["Ronaldo", "Amigo"])
+st.sidebar.write(f"🔥 Streak: {st.session_state.usuarios[user]['streak']} dias")
+st.sidebar.write(f"🏆 Pontos: {st.session_state.usuarios[user]['pontos']}")
 
-aba1, aba2 = st.tabs(["🗂️ Vocabulário (Anki)", "🎙️ Entrevista com IA"])
+st.title(f"Welcome back, {user}! 🚀")
 
-with aba1:
-    st.subheader("O Homem do Vocabulário")
+# --- ABAS ---
+tab1, tab2, tab3, tab4 = st.tabs(["🏆 Desafio/Ranking", "🎧 Listening Lab", "🎙️ Job Interview", "🗂️ Vocabulário"])
+
+with tab1:
+    st.header("Ranking dos Campeões")
+    df_ranking = pd.DataFrame(st.session_state.usuarios).T[['pontos', 'streak']]
+    st.table(df_ranking)
+    st.progress(st.session_state.usuarios[user]['pontos'] / 200)
+    st.write("Meta da semana: 200 pontos")
+
+with tab2:
+    st.header("O que a IA disse?")
+    texto_listening = "I have been working as a software engineer for five years and I am looking for a new challenge in a global company."
     
-    if 'index' not in st.session_state:
-        st.session_state.index = 0
-
-    word_data = df.iloc[st.session_state.index]
-
-    st.markdown(f"## {word_data['word']}")
+    if st.button("🔊 Ouvir Áudio"):
+        audio_fp = falar(texto_listening)
+        st.audio(audio_fp, format='audio/mp3')
     
-    if st.button("Ver Tradução e Exemplo"):
-        st.info(f"**Tradução:** {word_data['translation']}")
-        st.write(f"**Exemplo:** {word_data['sentence']}")
-
-    st.write("---")
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        if st.button("🟢 Fácil"):
-            st.session_state.index = random.randint(0, len(df)-1)
-            st.rerun()
-    with col2:
-        if st.button("🟡 Médio"):
-            st.session_state.index = random.randint(0, len(df)-1)
-            st.rerun()
-    with col3:
-        if st.button("🔴 Difícil"):
-            st.session_state.index = random.randint(0, len(df)-1)
-            st.rerun()
-
-with aba2:
-    st.subheader("Treino para Entrevista")
-    st.write("A IA vai analisar sua resposta abaixo:")
-    
-    pergunta = "Tell me about yourself and your professional background."
-    st.warning(f"Pergunta da IA: {pergunta}")
-    
-    resposta = st.text_area("Digite sua resposta em inglês aqui (ou use o microfone do teclado):")
-    
-    if st.button("Analisar minha fala"):
-        if resposta:
-            st.success("Analisando...")
-            # Aqui no futuro conectaremos a chave da API para uma análise real profunda
-            st.write("Dica da IA: Você usou bem os tempos verbais, mas tente usar palavras como 'achievements' para soar mais profissional.")
+    escolha = st.radio("Sobre o que foi o assunto?", ["Culinária", "Carreira Profissional", "Viagem", "Saúde"])
+    if st.button("Confirmar Resposta"):
+        if escolha == "Carreira Profissional":
+            st.success("Correct! +10 points")
+            st.session_state.usuarios[user]['pontos'] += 10
         else:
-            st.error("Por favor, escreva algo para eu analisar.")
+            st.error("Wrong answer. Try again!")
+
+with tab3:
+    st.header("Simulador de Entrevista")
+    pergunta = "What are your professional strengths?"
+    st.info(f"IA asks: {pergunta}")
+    
+    if st.button("🔊 Ouvir Pergunta"):
+        st.audio(falar(pergunta), format='audio/mp3')
+        
+    resposta = st.text_area("Sua resposta (Dite ou digite):")
+    if st.button("Analisar Resposta"):
+        if "experience" in resposta.lower() or "skills" in resposta.lower():
+            st.success("Boa! Você usou palavras-chave importantes. +5 pontos")
+            st.session_state.usuarios[user]['pontos'] += 5
+        else:
+            st.warning("Tente incluir suas habilidades e experiências na resposta.")
+
+with tab4:
+    st.header("Repetição Espaçada")
+    st.write("Sistema de 3000 palavras em construção...")
