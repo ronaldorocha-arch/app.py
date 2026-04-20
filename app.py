@@ -1,55 +1,65 @@
 import streamlit as st
+import pandas as pd
 import random
 
-# Configuração da página
-st.set_page_config(page_title="Meu Inglês com IA", layout="centered")
+st.set_page_config(page_title="My English IA", page_icon="🇬🇧")
 
-st.title("🚀 My English Mastery App")
+# Carregar as palavras do arquivo que você criou
+@st.cache_data
+def load_data():
+    try:
+        return pd.read_csv('palavras.csv')
+    except:
+        return pd.DataFrame({"word": ["Study"], "translation": ["Estudar"], "sentence": ["I love to study."]})
 
-# Simulando uma base de dados das 3000 palavras
-# No futuro, isso pode vir de um arquivo Excel ou CSV
-words_db = [
-    {"word": "The", "translation": "O/A", "sentence": "The book is on the table."},
-    {"word": "Management", "translation": "Gerenciamento", "sentence": "I have experience in project management."},
-    {"word": "Challenge", "translation": "Desafio", "sentence": "I am looking for a new challenge."},
-]
+df = load_data()
 
-if 'current_word' not in st.session_state:
-    st.session_state.current_word = random.choice(words_db)
+st.title("🎓 English Mastery App")
 
-word = st.session_state.current_word
+aba1, aba2 = st.tabs(["🗂️ Vocabulário (Anki)", "🎙️ Entrevista com IA"])
 
-# Card de Estudo
-st.subheader("Vocabulary Training")
-with st.container():
-    st.markdown(f"### Word: **{word['word']}**")
+with aba1:
+    st.subheader("O Homem do Vocabulário")
     
-    if st.button("Show Meaning & Sentence"):
-        st.info(f"**Tradução:** {word['translation']}")
-        st.write(f"*Example:* {word['sentence']}")
+    if 'index' not in st.session_state:
+        st.session_state.index = 0
+
+    word_data = df.iloc[st.session_state.index]
+
+    st.markdown(f"## {word_data['word']}")
     
+    if st.button("Ver Tradução e Exemplo"):
+        st.info(f"**Tradução:** {word_data['translation']}")
+        st.write(f"**Exemplo:** {word_data['sentence']}")
+
     st.write("---")
-    st.write("Como foi essa palavra para você?")
-    
     col1, col2, col3 = st.columns(3)
-    
     with col1:
         if st.button("🟢 Fácil"):
-            st.success("Boa! Vamos demorar a mostrar essa de novo.")
-            st.session_state.current_word = random.choice(words_db)
-            # st.experimental_rerun() # Descomentar no app real
-            
+            st.session_state.index = random.randint(0, len(df)-1)
+            st.rerun()
     with col2:
         if st.button("🟡 Médio"):
-            st.warning("Ok, anotado. Revisão em breve.")
-            st.session_state.current_word = random.choice(words_db)
-            
+            st.session_state.index = random.randint(0, len(df)-1)
+            st.rerun()
     with col3:
         if st.button("🔴 Difícil"):
-            st.error("Sem problemas! Vamos praticar mais vezes.")
-            st.session_state.current_word = random.choice(words_db)
+            st.session_state.index = random.randint(0, len(df)-1)
+            st.rerun()
 
-# Espaço para a IA (Placeholder por enquanto)
-st.sidebar.title("Configurações")
-if st.sidebar.button("Falar com IA (Beta)"):
-    st.sidebar.write("Função de áudio será integrada aqui!")
+with aba2:
+    st.subheader("Treino para Entrevista")
+    st.write("A IA vai analisar sua resposta abaixo:")
+    
+    pergunta = "Tell me about yourself and your professional background."
+    st.warning(f"Pergunta da IA: {pergunta}")
+    
+    resposta = st.text_area("Digite sua resposta em inglês aqui (ou use o microfone do teclado):")
+    
+    if st.button("Analisar minha fala"):
+        if resposta:
+            st.success("Analisando...")
+            # Aqui no futuro conectaremos a chave da API para uma análise real profunda
+            st.write("Dica da IA: Você usou bem os tempos verbais, mas tente usar palavras como 'achievements' para soar mais profissional.")
+        else:
+            st.error("Por favor, escreva algo para eu analisar.")
